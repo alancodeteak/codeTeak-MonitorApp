@@ -31,15 +31,15 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { UserRole } from "@/lib/types";
-import { auth } from "@/lib/firebase";
-import { 
-    createUserWithEmailAndPassword, 
-    signInWithEmailAndPassword,
-    setPersistence,
-    browserLocalPersistence
+import { auth, db } from "@/lib/firebase";
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  setPersistence,
+  browserLocalPersistence,
 } from "firebase/auth";
+import { doc, setDoc, getDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
-
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -48,7 +48,9 @@ const loginSchema = z.object({
 
 const signupSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
-  password: z.string().min(8, { message: "Password must be at least 8 characters." }),
+  password: z
+    .string()
+    .min(8, { message: "Password must be at least 8 characters." }),
   role: z.enum(["employee", "employer"], {
     required_error: "You need to select a role.",
   }),
@@ -72,42 +74,63 @@ export function LoginForm() {
   const onLoginSubmit = async (values: z.infer<typeof loginSchema>) => {
     setLoading(true);
     try {
-        await setPersistence(auth, browserLocalPersistence);
-        await signInWithEmailAndPassword(auth, values.email, values.password);
-        
-        // Mock role-based redirection
-        let role: UserRole = "employee";
-        if (values.email.includes("employer")) role = "employer";
-        
-        router.push(`/dashboard/${role}`);
+      await setPersistence(auth, browserLocalPersistence);
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        values.email,
+        values.password
+      );
+      const user = userCredential.user;
 
+      // Fetch user role from Firestore
+      const userDocRef = doc(db, "users", user.uid);
+      const userDoc = await getDoc(userDocRef);
+
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        const role = userData.role as UserRole;
+        router.push(`/dashboard/${role}`);
+      } else {
+        // This case should ideally not happen if signup is done correctly
+        throw new Error("User data not found. Please contact support.");
+      }
     } catch (error: any) {
-        toast({
-            variant: "destructive",
-            title: "Login Failed",
-            description: error.message,
-        });
+      toast({
+        variant: "destructive",
+        title: "Login Failed",
+        description: error.message,
+      });
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
 
   const onSignupSubmit = async (values: z.infer<typeof signupSchema>) => {
     setLoading(true);
     try {
-        await setPersistence(auth, browserLocalPersistence);
-        await createUserWithEmailAndPassword(auth, values.email, values.password);
-        // In a real app, you would also save the user's role to a database like Firestore
-        // associated with their user ID (auth.currentUser.uid).
-        router.push(`/dashboard/${values.role}`);
+      await setPersistence(auth, browserLocalPersistence);
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        values.email,
+        values.password
+      );
+      const user = userCredential.user;
+
+      // Save user role to Firestore
+      await setDoc(doc(db, "users", user.uid), {
+        email: user.email,
+        role: values.role,
+      });
+
+      router.push(`/dashboard/${values.role}`);
     } catch (error: any) {
-        toast({
-            variant: "destructive",
-            title: "Sign Up Failed",
-            description: error.message,
-        });
+      toast({
+        variant: "destructive",
+        title: "Sign Up Failed",
+        description: error.message,
+      });
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
 
@@ -127,7 +150,10 @@ export function LoginForm() {
           </CardHeader>
           <CardContent>
             <Form {...loginForm}>
-              <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
+              <form
+                onSubmit={loginForm.handleSubmit(onLoginSubmit)}
+                className="space-y-4"
+              >
                 <FormField
                   control={loginForm.control}
                   name="email"
@@ -148,7 +174,11 @@ export function LoginForm() {
                     <FormItem>
                       <FormLabel>Password</FormLabel>
                       <FormControl>
-                        <Input type="password" placeholder="••••••••" {...field} />
+                        <Input
+                          type="password"
+                          placeholder="••••••••"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -172,7 +202,10 @@ export function LoginForm() {
           </CardHeader>
           <CardContent>
             <Form {...signupForm}>
-              <form onSubmit={signupForm.handleSubmit(onSignupSubmit)} className="space-y-4">
+              <form
+                onSubmit={signupForm.handleSubmit(onSignupSubmit)}
+                className="space-y-4"
+              >
                 <FormField
                   control={signupForm.control}
                   name="email"
@@ -193,7 +226,11 @@ export function LoginForm() {
                     <FormItem>
                       <FormLabel>Password</FormLabel>
                       <FormControl>
-                        <Input type="password" placeholder="••••••••" {...field} />
+                        <Input
+                          type="password"
+                          placeholder="••••••••"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -205,7 +242,10 @@ export function LoginForm() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Role</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select a role" />
