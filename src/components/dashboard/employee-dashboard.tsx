@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -38,7 +38,7 @@ export function EmployeeDashboard() {
     return emp;
   });
 
-  const handleClockIn = () => {
+  const handleClockIn = useCallback(() => {
     const updatedEmployee = {
         ...employee,
         status: "Clocked In" as const,
@@ -46,9 +46,11 @@ export function EmployeeDashboard() {
     };
     setEmployee(updatedEmployee);
     updateMockEmployee(updatedEmployee);
-  };
+  }, [employee]);
 
-  const handleClockOut = () => {
+  const handleClockOut = useCallback(() => {
+    if (employee.status !== 'Clocked In') return;
+
     const sessionDuration = employee.currentSessionStart 
       ? new Date().getTime() - new Date(employee.currentSessionStart).getTime()
       : 0;
@@ -61,22 +63,26 @@ export function EmployeeDashboard() {
     };
     setEmployee(updatedEmployee);
     updateMockEmployee(updatedEmployee);
-  };
+  }, [employee]);
 
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      // Auto-pause when tab is hidden (e.g., user switches tabs, minimizes, or system sleeps)
-      if (document.hidden && employee.status === "Clocked In") {
-        handleClockOut();
-      }
+    const handleBeforeUnload = () => {
+      // This event fires when the user closes the tab or browser.
+      // It's the most reliable way to perform a last-minute action like clocking out.
+      // In a real-world application, you would use `navigator.sendBeacon()` 
+      // here to reliably send data to a server.
+      handleClockOut();
     };
 
-    document.addEventListener("visibilitychange", handleVisibilityChange);
+    if (employee.status === 'Clocked In') {
+      window.addEventListener("beforeunload", handleBeforeUnload);
+    }
 
+    // The cleanup function will run when the component unmounts or dependencies change.
+    // This ensures we remove the listener if the user clocks out manually.
     return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
     };
-    // Re-run the effect if handleClockOut or employee.status changes
   }, [employee.status, handleClockOut]);
 
 
