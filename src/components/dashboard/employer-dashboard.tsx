@@ -51,7 +51,6 @@ import { StatusDonutChart } from "./charts/status-donut-chart";
 import { AreaHoursChart } from "./charts/area-hours-chart";
 import { auth, db } from "@/lib/firebase";
 import { collection, query, where, onSnapshot, doc, updateDoc, arrayUnion, deleteDoc } from "firebase/firestore";
-import { dailyHoursData } from "@/lib/data";
 import { MoreHorizontal, BookUser, Pencil, Trash2, ClipboardPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -326,7 +325,7 @@ export function EmployerDashboard() {
                 <CardTitle>Daily Hours Trend (All Employees)</CardTitle>
               </CardHeader>
               <CardContent>
-                <DailyHoursChart dailyHours={dailyHoursData} />
+                <DailyHoursChart dailyHours={[]} />
               </CardContent>
             </Card>
           </div>
