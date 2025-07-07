@@ -48,6 +48,7 @@ import { HoursToday } from "./hours-today";
 import { TotalHoursChart } from "./charts/total-hours-chart";
 import { DailyHoursChart } from "./charts/daily-hours-chart";
 import { StatusDonutChart } from "./charts/status-donut-chart";
+import { AreaHoursChart } from "./charts/area-hours-chart";
 import { auth, db } from "@/lib/firebase";
 import { collection, query, where, onSnapshot, doc, updateDoc, arrayUnion, deleteDoc } from "firebase/firestore";
 import { dailyHoursData } from "@/lib/data";
@@ -310,6 +311,14 @@ export function EmployerDashboard() {
               </CardHeader>
               <CardContent>
                 <TotalHoursChart employees={employees} />
+              </CardContent>
+            </Card>
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle>Area Chart: Total Hours per Employee</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <AreaHoursChart employees={employees} />
               </CardContent>
             </Card>
             <Card className="lg:col-span-3">

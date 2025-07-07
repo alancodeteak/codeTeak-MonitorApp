@@ -1,6 +1,6 @@
 "use client"
 
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts"
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from "recharts"
 import { ChartTooltipContent, ChartContainer } from "@/components/ui/chart"
 import type { Employee } from "@/lib/types"
 
@@ -9,7 +9,24 @@ interface TotalHoursChartProps {
 }
 
 export function TotalHoursChart({ employees }: TotalHoursChartProps) {
-  const chartData = employees.map(emp => ({ name: emp.name.split(' ')[0], totalHours: emp.totalHours }));
+  const palette = [
+    '#6366F1', // Indigo
+    '#F59E42', // Orange
+    '#10B981', // Green
+    '#F43F5E', // Pink
+    '#3B82F6', // Blue
+    '#FBBF24', // Yellow
+    '#8B5CF6', // Violet
+    '#EC4899', // Fuchsia
+    '#22D3EE', // Cyan
+    '#A3E635', // Lime
+  ];
+
+  const chartData = employees.map((emp, idx) => ({
+    name: emp.name.split(' ')[0],
+    totalHours: emp.totalHours,
+    fill: palette[idx % palette.length],
+  }));
 
   const chartConfig = {
     totalHours: {
@@ -32,7 +49,22 @@ export function TotalHoursChart({ employees }: TotalHoursChartProps) {
           />
           <YAxis />
           <Tooltip cursor={false} content={<ChartTooltipContent />} />
-          <Bar dataKey="totalHours" fill="var(--color-totalHours)" radius={4} />
+          <Bar
+            dataKey="totalHours"
+            radius={[8, 8, 0, 0]}
+            isAnimationActive={true}
+            // Use fill from data
+            {
+              ...{
+                data: chartData,
+                fill: undefined,
+              }
+            }
+          >
+            {chartData.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={entry.fill} />
+            ))}
+          </Bar>
         </BarChart>
       </ResponsiveContainer>
     </ChartContainer>
