@@ -31,6 +31,15 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { UserRole } from "@/lib/types";
+import { auth } from "@/lib/firebase";
+import { 
+    createUserWithEmailAndPassword, 
+    signInWithEmailAndPassword,
+    setPersistence,
+    browserLocalPersistence
+} from "firebase/auth";
+import { useToast } from "@/hooks/use-toast";
+
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -47,6 +56,7 @@ const signupSchema = z.object({
 
 export function LoginForm() {
   const router = useRouter();
+  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
   const loginForm = useForm<z.infer<typeof loginSchema>>({
@@ -59,26 +69,46 @@ export function LoginForm() {
     defaultValues: { email: "", password: "", role: "employee" },
   });
 
-  const onLoginSubmit = (values: z.infer<typeof loginSchema>) => {
+  const onLoginSubmit = async (values: z.infer<typeof loginSchema>) => {
     setLoading(true);
-    console.log("Login submitted with:", values);
-    // Mock role-based redirection
-    let role: UserRole = "employee";
-    if (values.email.includes("employer")) role = "employer";
-    
-    // Simulate API call
-    setTimeout(() => {
-      router.push(`/dashboard/${role}`);
-    }, 1000);
+    try {
+        await setPersistence(auth, browserLocalPersistence);
+        await signInWithEmailAndPassword(auth, values.email, values.password);
+        
+        // Mock role-based redirection
+        let role: UserRole = "employee";
+        if (values.email.includes("employer")) role = "employer";
+        
+        router.push(`/dashboard/${role}`);
+
+    } catch (error: any) {
+        toast({
+            variant: "destructive",
+            title: "Login Failed",
+            description: error.message,
+        });
+    } finally {
+        setLoading(false);
+    }
   };
 
-  const onSignupSubmit = (values: z.infer<typeof signupSchema>) => {
+  const onSignupSubmit = async (values: z.infer<typeof signupSchema>) => {
     setLoading(true);
-    console.log("Signup submitted with:", values);
-    // Simulate API call
-    setTimeout(() => {
-      router.push(`/dashboard/${values.role}`);
-    }, 1000);
+    try {
+        await setPersistence(auth, browserLocalPersistence);
+        await createUserWithEmailAndPassword(auth, values.email, values.password);
+        // In a real app, you would also save the user's role to a database like Firestore
+        // associated with their user ID (auth.currentUser.uid).
+        router.push(`/dashboard/${values.role}`);
+    } catch (error: any) {
+        toast({
+            variant: "destructive",
+            title: "Sign Up Failed",
+            description: error.message,
+        });
+    } finally {
+        setLoading(false);
+    }
   };
 
   return (
