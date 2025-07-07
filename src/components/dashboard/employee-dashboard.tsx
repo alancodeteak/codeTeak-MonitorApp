@@ -17,7 +17,7 @@ import { HoursToday } from "./hours-today";
 import { useToast } from "@/hooks/use-toast";
 import { getDistance } from "@/lib/utils";
 import { auth, db } from "@/lib/firebase";
-import { doc, onSnapshot, updateDoc, arrayUnion } from "firebase/firestore";
+import { doc, onSnapshot, updateDoc, arrayUnion, serverTimestamp, increment } from "firebase/firestore";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { Skeleton } from "../ui/skeleton";
 
@@ -60,8 +60,6 @@ export function EmployeeDashboard() {
         } as Employee;
         setEmployee(employeeData);
       } else {
-        // This case can happen if the user document is not created on signup.
-        // The login form now handles creation, so this is a fallback.
         console.error("Employee data not found in Firestore.");
       }
       setLoading(false);
@@ -119,13 +117,14 @@ export function EmployeeDashboard() {
     if (!user || !employee || employee.status !== 'Clocked In') return;
 
     const sessionDuration = employee.currentSessionStart
-      ? new Date().getTime() - new Date(employee.currentSessionStart).getTime()
+      ? (new Date().getTime() - new Date(employee.currentSessionStart).getTime()) / 3600000 // duration in hours
       : 0;
 
     await updateDoc(doc(db, "users", user.uid), {
       status: "Clocked Out",
       currentSessionStart: null,
-      accumulatedTimeToday: employee.accumulatedTimeToday + sessionDuration,
+      accumulatedTimeToday: employee.accumulatedTimeToday + (sessionDuration * 3600000), // back to ms
+      totalHours: increment(sessionDuration)
     });
   }, [user, employee]);
   
