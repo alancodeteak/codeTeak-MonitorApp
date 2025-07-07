@@ -123,7 +123,7 @@ export function LoginForm() {
         role: values.role,
         status: 'Clocked Out',
         accumulatedTimeToday: 0,
-        currentSessionStart: undefined,
+        currentSessionStart: null,
         tasks: [],
         totalHours: 0
       };
