@@ -20,24 +20,18 @@ const menuItems = [
     href: '/dashboard/employee',
     label: 'My Dashboard',
     icon: LayoutDashboard,
-    roles: ['employee', 'employer', 'admin'],
+    roles: ['employee', 'employer'],
   },
   {
     href: '/dashboard/employer',
     label: 'Team View',
     icon: Users,
-    roles: ['employer', 'admin'],
-  },
-  {
-    href: '/dashboard/admin',
-    label: 'Admin Analytics',
-    icon: BarChartBig,
-    roles: ['admin'],
+    roles: ['employer'],
   },
 ];
 
 // In a real app, you'd get this from your auth context
-const currentUserRole = 'admin'; 
+const currentUserRole = 'employer'; 
 
 export function MainNav({ className, ...props }: React.HTMLAttributes<HTMLElement>) {
   const pathname = usePathname();

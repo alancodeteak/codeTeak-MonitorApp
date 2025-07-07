@@ -27,7 +27,7 @@ export default function DashboardLayout({
             <Button variant="ghost" size="icon" className="size-9 shrink-0">
               <TimerIcon className="size-5 text-primary" />
             </Button>
-            <span className="text-lg font-semibold tracking-tight text-primary font-headline">EmpTrack</span>
+            <span className="text-lg font-semibold tracking-tight text-primary font-headline">CodeTeak</span>
           </div>
         </SidebarHeader>
         <SidebarContent>

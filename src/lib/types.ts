@@ -1,4 +1,4 @@
-export type UserRole = "employee" | "employer" | "admin";
+export type UserRole = "employee" | "employer";
 
 export interface Task {
   id: string;
@@ -12,7 +12,7 @@ export interface Employee {
   id: string;
   name: string;
   email: string;
-  role: UserRole;
+  role: "employee" | "employer"; // Simplified role
   status: EmployeeStatus;
   currentSessionStart?: Date;
   accumulatedTimeToday: number; // in milliseconds

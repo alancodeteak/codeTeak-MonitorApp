@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation';
 
 const pageTitles: { [key: string]: string } = {
   '/dashboard/employee': 'My Dashboard',
-  '/dashboard/employer': 'Team View',
+  '/dashboard/employer': 'Employer Dashboard & Analytics',
   '/dashboard/admin': 'Admin Analytics',
 };
 

@@ -40,7 +40,7 @@ const loginSchema = z.object({
 const signupSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
   password: z.string().min(8, { message: "Password must be at least 8 characters." }),
-  role: z.enum(["employee", "employer", "admin"], {
+  role: z.enum(["employee", "employer"], {
     required_error: "You need to select a role.",
   }),
 });
@@ -65,7 +65,6 @@ export function LoginForm() {
     // Mock role-based redirection
     let role: UserRole = "employee";
     if (values.email.includes("employer")) role = "employer";
-    if (values.email.includes("admin")) role = "admin";
     
     // Simulate API call
     setTimeout(() => {
@@ -185,7 +184,6 @@ export function LoginForm() {
                         <SelectContent>
                           <SelectItem value="employee">Employee</SelectItem>
                           <SelectItem value="employer">Employer</SelectItem>
-                          <SelectItem value="admin">Admin</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />

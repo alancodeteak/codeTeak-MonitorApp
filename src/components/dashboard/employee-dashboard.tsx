@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -62,6 +62,23 @@ export function EmployeeDashboard() {
     setEmployee(updatedEmployee);
     updateMockEmployee(updatedEmployee);
   };
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      // Auto-pause when tab is hidden (e.g., user switches tabs, minimizes, or system sleeps)
+      if (document.hidden && employee.status === "Clocked In") {
+        handleClockOut();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+    // Re-run the effect if handleClockOut or employee.status changes
+  }, [employee.status, handleClockOut]);
+
 
   const isClockedIn = employee.status === "Clocked In";
 
