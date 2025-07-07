@@ -1,6 +1,7 @@
-import { AdminDashboard } from "@/components/dashboard/admin-dashboard";
-import { mockEmployees, dailyHoursData } from "@/lib/data";
+import { redirect } from 'next/navigation';
 
+// The admin role has been consolidated into the employer role.
+// This page now redirects to the employer dashboard for convenience.
 export default function AdminPage() {
-    return <AdminDashboard employees={mockEmployees} dailyHours={dailyHoursData} />;
+    redirect('/dashboard/employer');
 }

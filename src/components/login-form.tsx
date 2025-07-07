@@ -30,7 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { UserRole } from "@/lib/types";
+import type { UserRole, Employee } from "@/lib/types";
 import { auth, db } from "@/lib/firebase";
 import {
   createUserWithEmailAndPassword,
@@ -40,6 +40,7 @@ import {
 } from "firebase/auth";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
+import { Loader2 } from "lucide-react";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -47,6 +48,7 @@ const loginSchema = z.object({
 });
 
 const signupSchema = z.object({
+  name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   email: z.string().email({ message: "Invalid email address." }),
   password: z
     .string()
@@ -68,7 +70,7 @@ export function LoginForm() {
 
   const signupForm = useForm<z.infer<typeof signupSchema>>({
     resolver: zodResolver(signupSchema),
-    defaultValues: { email: "", password: "", role: "employee" },
+    defaultValues: { name: "", email: "", password: "", role: "employee" },
   });
 
   const onLoginSubmit = async (values: z.infer<typeof loginSchema>) => {
@@ -82,7 +84,6 @@ export function LoginForm() {
       );
       const user = userCredential.user;
 
-      // Fetch user role from Firestore
       const userDocRef = doc(db, "users", user.uid);
       const userDoc = await getDoc(userDocRef);
 
@@ -91,7 +92,6 @@ export function LoginForm() {
         const role = userData.role as UserRole;
         router.push(`/dashboard/${role}`);
       } else {
-        // This case should ideally not happen if signup is done correctly
         throw new Error("User data not found. Please contact support.");
       }
     } catch (error: any) {
@@ -116,11 +116,19 @@ export function LoginForm() {
       );
       const user = userCredential.user;
 
-      // Save user role to Firestore
-      await setDoc(doc(db, "users", user.uid), {
-        email: user.email,
+      const newUser: Employee = {
+        id: user.uid,
+        name: values.name,
+        email: values.email,
         role: values.role,
-      });
+        status: 'Clocked Out',
+        accumulatedTimeToday: 0,
+        currentSessionStart: undefined,
+        tasks: [],
+        totalHours: 0
+      };
+
+      await setDoc(doc(db, "users", user.uid), newUser);
 
       router.push(`/dashboard/${values.role}`);
     } catch (error: any) {
@@ -185,6 +193,7 @@ export function LoginForm() {
                   )}
                 />
                 <Button type="submit" className="w-full" disabled={loading}>
+                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   {loading ? "Signing In..." : "Sign In"}
                 </Button>
               </form>
@@ -206,6 +215,19 @@ export function LoginForm() {
                 onSubmit={signupForm.handleSubmit(onSignupSubmit)}
                 className="space-y-4"
               >
+                 <FormField
+                  control={signupForm.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Full Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="John Doe" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <FormField
                   control={signupForm.control}
                   name="email"
@@ -261,6 +283,7 @@ export function LoginForm() {
                   )}
                 />
                 <Button type="submit" className="w-full" disabled={loading}>
+                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   {loading ? "Creating Account..." : "Create Account"}
                 </Button>
               </form>

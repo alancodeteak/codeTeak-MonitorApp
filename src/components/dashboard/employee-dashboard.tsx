@@ -11,43 +11,67 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { Clock, LogIn, LogOut, MapPin } from "lucide-react";
+import { Clock, LogIn, LogOut, MapPin, Loader2 } from "lucide-react";
 import type { Employee } from "@/lib/types";
-import { mockEmployees } from "@/lib/data";
 import { HoursToday } from "./hours-today";
 import { useToast } from "@/hooks/use-toast";
 import { getDistance } from "@/lib/utils";
+import { auth, db } from "@/lib/firebase";
+import { doc, onSnapshot, updateDoc, arrayUnion } from "firebase/firestore";
+import { onAuthStateChanged, type User } from "firebase/auth";
+import { Skeleton } from "../ui/skeleton";
 
-// In a real app, this would come from an auth context or API call
-const currentEmployeeId = '1';
-
-// Constants for location verification
 const OFFICE_COORDS = { latitude: 12.874256, longitude: 77.613996 };
 const MAX_DISTANCE_METERS = 30;
 
-
-// In a real app, you would have an API to update the employee data.
-// Here we are mocking this behavior by mutating the imported array.
-const updateMockEmployee = (updatedEmployee: Employee) => {
-    const index = mockEmployees.findIndex(e => e.id === updatedEmployee.id);
-    if (index !== -1) {
-        mockEmployees[index] = updatedEmployee;
-    }
-}
-
 export function EmployeeDashboard() {
-  const [employee, setEmployee] = useState<Employee>(() => {
-    const emp = mockEmployees.find(e => e.id === currentEmployeeId);
-    if (!emp) {
-      // This should not happen in a real app with proper auth
-      throw new Error("Employee not found");
-    }
-    return emp;
-  });
+  const [user, setUser] = useState<User | null>(null);
+  const [employee, setEmployee] = useState<Employee | null>(null);
+  const [loading, setLoading] = useState(true);
   const [isVerifyingLocation, setIsVerifyingLocation] = useState(false);
+  const [taskLog, setTaskLog] = useState("");
   const { toast } = useToast();
 
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      if (!currentUser) {
+        setLoading(false);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const docRef = doc(db, "users", user.uid);
+    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        const employeeData: Employee = {
+          ...data,
+          id: docSnap.id,
+          currentSessionStart: data.currentSessionStart?.toDate(),
+          tasks: data.tasks.map((task: any) => ({
+            ...task,
+            timestamp: task.timestamp.toDate(),
+          })),
+        } as Employee;
+        setEmployee(employeeData);
+      } else {
+        // This case can happen if the user document is not created on signup.
+        // The login form now handles creation, so this is a fallback.
+        console.error("Employee data not found in Firestore.");
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+  
   const handleClockIn = useCallback(async () => {
+    if (!user) return;
     setIsVerifyingLocation(true);
 
     const getLocation = (): Promise<GeolocationPosition> => {
@@ -55,7 +79,6 @@ export function EmployeeDashboard() {
         if (!navigator.geolocation) {
           reject(new Error("Geolocation is not supported by your browser."));
         }
-        // Set a timeout for the location request
         navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 });
       });
     };
@@ -63,13 +86,7 @@ export function EmployeeDashboard() {
     try {
       const position = await getLocation();
       const { latitude, longitude } = position.coords;
-
-      const distance = getDistance(
-        latitude,
-        longitude,
-        OFFICE_COORDS.latitude,
-        OFFICE_COORDS.longitude
-      );
+      const distance = getDistance(latitude, longitude, OFFICE_COORDS.latitude, OFFICE_COORDS.longitude);
 
       if (distance > MAX_DISTANCE_METERS) {
         toast({
@@ -80,68 +97,88 @@ export function EmployeeDashboard() {
         return;
       }
 
-      const updatedEmployee = {
-          ...employee,
-          status: "Clocked In" as const,
-          currentSessionStart: new Date(),
-      };
-      setEmployee(updatedEmployee);
-      updateMockEmployee(updatedEmployee);
+      await updateDoc(doc(db, "users", user.uid), {
+        status: "Clocked In",
+        currentSessionStart: new Date(),
+      });
 
     } catch (error: any) {
       let description = "An unknown error occurred while verifying your location.";
-      if (error.code === 1) { // PERMISSION_DENIED
-        description = "Location access was denied. Please enable location permissions in your browser settings to clock in.";
-      } else if (error.code === 2) { // POSITION_UNAVAILABLE
-        description = "Your location could not be determined. Please check your network connection and try again.";
-      } else if (error.code === 3) { // TIMEOUT
-        description = "The request to get your location timed out. Please try again.";
-      } else if (error instanceof Error) {
-        description = error.message;
-      }
+      if (error.code === 1) description = "Location access was denied. Please enable location permissions.";
+      else if (error.code === 2) description = "Your location could not be determined.";
+      else if (error.code === 3) description = "The request to get your location timed out.";
+      else if (error instanceof Error) description = error.message;
 
-      toast({
-        variant: "destructive",
-        title: "Location Verification Failed",
-        description,
-      });
+      toast({ variant: "destructive", title: "Location Verification Failed", description });
     } finally {
       setIsVerifyingLocation(false);
     }
-  }, [employee, toast]);
+  }, [user, toast]);
 
-  const handleClockOut = useCallback(() => {
-    if (employee.status !== 'Clocked In') return;
+  const handleClockOut = useCallback(async () => {
+    if (!user || !employee || employee.status !== 'Clocked In') return;
 
-    const sessionDuration = employee.currentSessionStart 
+    const sessionDuration = employee.currentSessionStart
       ? new Date().getTime() - new Date(employee.currentSessionStart).getTime()
       : 0;
-    
-    const updatedEmployee = {
-        ...employee,
-        status: "Clocked Out" as const,
-        currentSessionStart: undefined,
-        accumulatedTimeToday: employee.accumulatedTimeToday + sessionDuration,
-    };
-    setEmployee(updatedEmployee);
-    updateMockEmployee(updatedEmployee);
-  }, [employee]);
+
+    await updateDoc(doc(db, "users", user.uid), {
+      status: "Clocked Out",
+      currentSessionStart: null,
+      accumulatedTimeToday: employee.accumulatedTimeToday + sessionDuration,
+    });
+  }, [user, employee]);
+  
+  const handleSaveLog = async () => {
+    if (!user || !taskLog.trim()) return;
+    try {
+      await updateDoc(doc(db, "users", user.uid), {
+        tasks: arrayUnion({
+          id: `task_${Date.now()}`,
+          description: taskLog,
+          timestamp: new Date(),
+        })
+      });
+      setTaskLog("");
+      toast({
+          title: "Log Saved",
+          description: "Your task has been successfully logged.",
+      });
+    } catch (error: any) {
+       toast({
+        variant: "destructive",
+        title: "Error Saving Log",
+        description: error.message,
+      });
+    }
+  };
 
   useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (employee.status === 'Clocked In') {
-         handleClockOut();
-      }
-    };
+    window.addEventListener("beforeunload", handleClockOut);
+    return () => window.removeEventListener("beforeunload", handleClockOut);
+  }, [handleClockOut]);
+  
+  if (loading) {
+    return (
+       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+         <Card className="md:col-span-1">
+            <CardHeader><Skeleton className="h-8 w-3/4" /></CardHeader>
+            <CardContent className="space-y-4"><Skeleton className="h-24 w-full" /></CardContent>
+            <CardFooter><Skeleton className="h-10 w-full" /></CardFooter>
+          </Card>
+          <Card className="md:col-span-2">
+            <CardHeader><Skeleton className="h-8 w-3/4" /></CardHeader>
+            <CardContent><Skeleton className="h-48 w-full" /></CardContent>
+            <CardFooter><Skeleton className="h-10 w-24" /></CardFooter>
+          </Card>
+       </div>
+    );
+  }
 
-    window.addEventListener("beforeunload", handleBeforeUnload);
-
-    return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-    };
-  }, [employee.status, handleClockOut]);
-
-
+  if (!employee) {
+    return <div>Employee data could not be loaded.</div>;
+  }
+  
   const isClockedIn = employee.status === "Clocked In";
 
   return (
@@ -188,10 +225,10 @@ export function EmployeeDashboard() {
             >
                 {isVerifyingLocation ? (
                     <>
-                        <MapPin className="mr-2 h-4 w-4 animate-pulse" /> Verifying Location...
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verifying...
                     </>
                 ) : (
-                    <>
+                     <>
                         <LogIn className="mr-2 h-4 w-4" /> Clock In
                     </>
                 )}
@@ -211,10 +248,12 @@ export function EmployeeDashboard() {
           <Textarea
             placeholder="What are you working on today?"
             className="min-h-[200px] resize-none"
+            value={taskLog}
+            onChange={(e) => setTaskLog(e.target.value)}
           />
         </CardContent>
         <CardFooter>
-          <Button>Save Log</Button>
+          <Button onClick={handleSaveLog}>Save Log</Button>
         </CardFooter>
       </Card>
     </div>

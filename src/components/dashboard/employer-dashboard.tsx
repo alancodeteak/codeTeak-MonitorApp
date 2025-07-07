@@ -27,17 +27,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { Employee, EmployeeStatus } from "@/lib/types";
 import { HoursToday } from "./hours-today";
 import { TotalHoursChart } from "./charts/total-hours-chart";
 import { DailyHoursChart } from "./charts/daily-hours-chart";
 import { StatusDonutChart } from "./charts/status-donut-chart";
+import { db } from "@/lib/firebase";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { dailyHoursData } from "@/lib/data";
 
-
-interface EmployerDashboardProps {
-  employees: Employee[];
-  dailyHours: { date: string; hours: number }[];
-}
 
 const statusVariant: { [key in EmployeeStatus]: "default" | "secondary" | "destructive" } = {
   "Clocked In": "default",
@@ -52,14 +51,56 @@ const statusColor: { [key in EmployeeStatus]: string } = {
 };
 
 
-export function EmployerDashboard({ employees, dailyHours }: EmployerDashboardProps) {
+export function EmployerDashboard() {
+  const [employees, setEmployees] = React.useState<Employee[]>([]);
+  const [loading, setLoading] = React.useState(true);
   const [selectedEmployee, setSelectedEmployee] = React.useState<Employee | null>(null);
   const [currentDate, setCurrentDate] = React.useState<string>("");
+
+  React.useEffect(() => {
+    const q = query(collection(db, "users"), where("role", "==", "employee"));
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const emps: Employee[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        emps.push({
+          ...data,
+          id: doc.id,
+          currentSessionStart: data.currentSessionStart?.toDate(),
+          tasks: data.tasks.map((task: any) => ({ ...task, timestamp: task.timestamp?.toDate() })),
+        } as Employee);
+      });
+      setEmployees(emps);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   React.useEffect(() => {
     const date = new Date();
     setCurrentDate(date.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }));
   }, []);
+  
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+             <Skeleton className="h-8 w-1/4" />
+             <Skeleton className="h-4 w-1/2" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -183,7 +224,7 @@ export function EmployerDashboard({ employees, dailyHours }: EmployerDashboardPr
                 <CardTitle>Daily Hours Trend (All Employees)</CardTitle>
               </CardHeader>
               <CardContent>
-                <DailyHoursChart dailyHours={dailyHours} />
+                <DailyHoursChart dailyHours={dailyHoursData} />
               </CardContent>
             </Card>
           </div>
