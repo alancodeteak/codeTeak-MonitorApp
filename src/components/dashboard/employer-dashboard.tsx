@@ -48,21 +48,38 @@ const statusColor: { [key in EmployeeStatus]: string } = {
 
 export function EmployerDashboard({ employees }: EmployerDashboardProps) {
   const [selectedEmployee, setSelectedEmployee] = React.useState<Employee | null>(null);
+  const [dynamicTimes, setDynamicTimes] = React.useState<Record<string, { hoursToday: string; clockedInAt: string }>>({});
+  const [currentDate, setCurrentDate] = React.useState<string>("");
 
-  const formatClockInTime = (date?: Date) => {
-    if (!date) return "N/A";
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
-  
-  const calculateHoursWorked = (employee: Employee) => {
-    if (employee.status !== "Clocked In" || !employee.clockInTime) {
-      return '00:00';
-    }
-    const diff = new Date().getTime() - new Date(employee.clockInTime).getTime();
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-  };
+  React.useEffect(() => {
+    const updateTimes = () => {
+      const newTimes: Record<string, { hoursToday: string; clockedInAt: string }> = {};
+      const date = new Date();
+      setCurrentDate(date.toLocaleDateString());
+
+      employees.forEach((employee) => {
+        const clockedInAt = employee.clockInTime
+          ? new Date(employee.clockInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          : "N/A";
+        
+        let hoursToday = '00:00';
+        if (employee.status === "Clocked In" && employee.clockInTime) {
+          const diff = date.getTime() - new Date(employee.clockInTime).getTime();
+          const hours = Math.floor(diff / (1000 * 60 * 60));
+          const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+          hoursToday = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+        }
+        
+        newTimes[employee.id] = { hoursToday, clockedInAt };
+      });
+      setDynamicTimes(newTimes);
+    };
+
+    updateTimes();
+    const intervalId = setInterval(updateTimes, 60000); // Update every minute
+
+    return () => clearInterval(intervalId);
+  }, [employees]);
 
   return (
     <Card>
@@ -100,8 +117,8 @@ export function EmployerDashboard({ employees }: EmployerDashboardProps) {
                         {employee.status}
                       </Badge>
                     </TableCell>
-                    <TableCell>{formatClockInTime(employee.clockInTime)}</TableCell>
-                    <TableCell>{calculateHoursWorked(employee)}</TableCell>
+                    <TableCell>{dynamicTimes[employee.id]?.clockedInAt ?? 'N/A'}</TableCell>
+                    <TableCell>{dynamicTimes[employee.id]?.hoursToday ?? (employee.status !== 'Clocked Out' ? '...' : '00:00')}</TableCell>
                     <TableCell className="text-right">
                       <DialogTrigger asChild>
                         <Button
@@ -123,7 +140,7 @@ export function EmployerDashboard({ employees }: EmployerDashboardProps) {
               <DialogHeader>
                 <DialogTitle>Daily Tasks for {selectedEmployee.name}</DialogTitle>
                 <DialogDescription>
-                  Tasks logged on {new Date().toLocaleDateString()}.
+                  Tasks logged on {currentDate}.
                 </DialogDescription>
               </DialogHeader>
               <div className="prose prose-sm dark:prose-invert max-h-64 overflow-y-auto rounded-md border p-4">
