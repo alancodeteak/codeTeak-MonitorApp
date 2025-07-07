@@ -11,13 +11,20 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { Clock, LogIn, LogOut } from "lucide-react";
+import { Clock, LogIn, LogOut, MapPin } from "lucide-react";
 import type { Employee } from "@/lib/types";
 import { mockEmployees } from "@/lib/data";
 import { HoursToday } from "./hours-today";
+import { useToast } from "@/hooks/use-toast";
+import { getDistance } from "@/lib/utils";
 
 // In a real app, this would come from an auth context or API call
 const currentEmployeeId = '1';
+
+// Constants for location verification
+const OFFICE_COORDS = { latitude: 12.874256, longitude: 77.613996 };
+const MAX_DISTANCE_METERS = 30;
+
 
 // In a real app, you would have an API to update the employee data.
 // Here we are mocking this behavior by mutating the imported array.
@@ -37,16 +44,71 @@ export function EmployeeDashboard() {
     }
     return emp;
   });
+  const [isVerifyingLocation, setIsVerifyingLocation] = useState(false);
+  const { toast } = useToast();
 
-  const handleClockIn = useCallback(() => {
-    const updatedEmployee = {
-        ...employee,
-        status: "Clocked In" as const,
-        currentSessionStart: new Date(),
+  const handleClockIn = useCallback(async () => {
+    setIsVerifyingLocation(true);
+
+    const getLocation = (): Promise<GeolocationPosition> => {
+      return new Promise((resolve, reject) => {
+        if (!navigator.geolocation) {
+          reject(new Error("Geolocation is not supported by your browser."));
+        }
+        // Set a timeout for the location request
+        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 });
+      });
     };
-    setEmployee(updatedEmployee);
-    updateMockEmployee(updatedEmployee);
-  }, [employee]);
+
+    try {
+      const position = await getLocation();
+      const { latitude, longitude } = position.coords;
+
+      const distance = getDistance(
+        latitude,
+        longitude,
+        OFFICE_COORDS.latitude,
+        OFFICE_COORDS.longitude
+      );
+
+      if (distance > MAX_DISTANCE_METERS) {
+        toast({
+          variant: "destructive",
+          title: "Clock-in Failed",
+          description: `You must be within ${MAX_DISTANCE_METERS} meters of the office to clock in. You are ~${Math.round(distance)}m away.`,
+        });
+        return;
+      }
+
+      const updatedEmployee = {
+          ...employee,
+          status: "Clocked In" as const,
+          currentSessionStart: new Date(),
+      };
+      setEmployee(updatedEmployee);
+      updateMockEmployee(updatedEmployee);
+
+    } catch (error: any) {
+      let description = "An unknown error occurred while verifying your location.";
+      if (error.code === 1) { // PERMISSION_DENIED
+        description = "Location access was denied. Please enable location permissions in your browser settings to clock in.";
+      } else if (error.code === 2) { // POSITION_UNAVAILABLE
+        description = "Your location could not be determined. Please check your network connection and try again.";
+      } else if (error.code === 3) { // TIMEOUT
+        description = "The request to get your location timed out. Please try again.";
+      } else if (error instanceof Error) {
+        description = error.message;
+      }
+
+      toast({
+        variant: "destructive",
+        title: "Location Verification Failed",
+        description,
+      });
+    } finally {
+      setIsVerifyingLocation(false);
+    }
+  }, [employee, toast]);
 
   const handleClockOut = useCallback(() => {
     if (employee.status !== 'Clocked In') return;
@@ -67,19 +129,13 @@ export function EmployeeDashboard() {
 
   useEffect(() => {
     const handleBeforeUnload = () => {
-      // This event fires when the user closes the tab or browser.
-      // It's the most reliable way to perform a last-minute action like clocking out.
-      // In a real-world application, you would use `navigator.sendBeacon()` 
-      // here to reliably send data to a server.
-      handleClockOut();
+      if (employee.status === 'Clocked In') {
+         handleClockOut();
+      }
     };
 
-    if (employee.status === 'Clocked In') {
-      window.addEventListener("beforeunload", handleBeforeUnload);
-    }
+    window.addEventListener("beforeunload", handleBeforeUnload);
 
-    // The cleanup function will run when the component unmounts or dependencies change.
-    // This ensures we remove the listener if the user clocks out manually.
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
@@ -125,8 +181,20 @@ export function EmployeeDashboard() {
               <LogOut className="mr-2 h-4 w-4" /> Clock Out
             </Button>
           ) : (
-            <Button onClick={handleClockIn} className="w-full">
-              <LogIn className="mr-2 h-4 w-4" /> Clock In
+             <Button 
+              onClick={handleClockIn} 
+              className="w-full" 
+              disabled={isVerifyingLocation}
+            >
+                {isVerifyingLocation ? (
+                    <>
+                        <MapPin className="mr-2 h-4 w-4 animate-pulse" /> Verifying Location...
+                    </>
+                ) : (
+                    <>
+                        <LogIn className="mr-2 h-4 w-4" /> Clock In
+                    </>
+                )}
             </Button>
           )}
         </CardFooter>
