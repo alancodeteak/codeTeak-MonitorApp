@@ -28,6 +28,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { Employee, EmployeeStatus } from "@/lib/types";
+import { HoursToday } from "./hours-today";
 
 interface EmployerDashboardProps {
   employees: Employee[];
@@ -48,38 +49,12 @@ const statusColor: { [key in EmployeeStatus]: string } = {
 
 export function EmployerDashboard({ employees }: EmployerDashboardProps) {
   const [selectedEmployee, setSelectedEmployee] = React.useState<Employee | null>(null);
-  const [dynamicTimes, setDynamicTimes] = React.useState<Record<string, { hoursToday: string; clockedInAt: string }>>({});
   const [currentDate, setCurrentDate] = React.useState<string>("");
 
   React.useEffect(() => {
-    const updateTimes = () => {
-      const newTimes: Record<string, { hoursToday: string; clockedInAt: string }> = {};
-      const date = new Date();
-      setCurrentDate(date.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }));
-
-      employees.forEach((employee) => {
-        const clockedInAt = employee.clockInTime
-          ? new Date(employee.clockInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          : "N/A";
-        
-        let hoursToday = '00:00';
-        if (employee.status === "Clocked In" && employee.clockInTime) {
-          const diff = date.getTime() - new Date(employee.clockInTime).getTime();
-          const hours = Math.floor(diff / (1000 * 60 * 60));
-          const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-          hoursToday = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-        }
-        
-        newTimes[employee.id] = { hoursToday, clockedInAt };
-      });
-      setDynamicTimes(newTimes);
-    };
-
-    updateTimes();
-    const intervalId = setInterval(updateTimes, 60000); // Update every minute
-
-    return () => clearInterval(intervalId);
-  }, [employees]);
+    const date = new Date();
+    setCurrentDate(date.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }));
+  }, []);
 
   return (
     <Card>
@@ -117,8 +92,18 @@ export function EmployerDashboard({ employees }: EmployerDashboardProps) {
                         {employee.status}
                       </Badge>
                     </TableCell>
-                    <TableCell>{dynamicTimes[employee.id]?.clockedInAt ?? 'N/A'}</TableCell>
-                    <TableCell>{dynamicTimes[employee.id]?.hoursToday ?? (employee.status !== 'Clocked Out' ? '...' : '00:00')}</TableCell>
+                    <TableCell>
+                      {employee.status === 'Clocked In' && employee.currentSessionStart
+                        ? new Date(employee.currentSessionStart).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                        : "N/A"}
+                    </TableCell>
+                    <TableCell>
+                      <HoursToday 
+                        status={employee.status}
+                        accumulatedTime={employee.accumulatedTimeToday}
+                        sessionStart={employee.currentSessionStart}
+                      />
+                    </TableCell>
                     <TableCell className="text-right">
                       <DialogTrigger asChild>
                         <Button

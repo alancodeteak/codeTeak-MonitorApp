@@ -14,7 +14,8 @@ export interface Employee {
   email: string;
   role: UserRole;
   status: EmployeeStatus;
-  clockInTime?: Date;
+  currentSessionStart?: Date;
+  accumulatedTimeToday: number; // in milliseconds
   tasks: Task[];
   totalHours: number;
 }

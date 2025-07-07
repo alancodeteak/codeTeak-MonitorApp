@@ -7,7 +7,8 @@ export const mockEmployees: Employee[] = [
     email: 'alice@example.com',
     role: 'employee',
     status: 'Clocked In',
-    clockInTime: new Date(new Date().setHours(new Date().getHours() - 2)),
+    currentSessionStart: new Date(new Date().setHours(new Date().getHours() - 2)),
+    accumulatedTimeToday: 1.5 * 3600 * 1000, // 1.5 hours from previous sessions today
     tasks: [{ id: 't1', description: 'Worked on feature X.', timestamp: new Date() }],
     totalHours: 7.5,
   },
@@ -17,6 +18,7 @@ export const mockEmployees: Employee[] = [
     email: 'bob@example.com',
     role: 'employee',
     status: 'Clocked Out',
+    accumulatedTimeToday: 8 * 3600 * 1000, // 8 hours total for the day
     tasks: [{ id: 't2', description: 'Client meeting and follow-up emails.', timestamp: new Date() }],
     totalHours: 8.0,
   },
@@ -26,7 +28,7 @@ export const mockEmployees: Employee[] = [
     email: 'charlie@example.com',
     role: 'employee',
     status: 'On Break',
-    clockInTime: new Date(new Date().setHours(new Date().getHours() - 4)),
+    accumulatedTimeToday: 4 * 3600 * 1000, // Was working for 4 hours, now on break
     tasks: [{ id: 't3', description: 'Initial project setup for Project Y.', timestamp: new Date() }],
     totalHours: 6.2,
   },
@@ -36,7 +38,8 @@ export const mockEmployees: Employee[] = [
     email: 'diana@example.com',
     role: 'employee',
     status: 'Clocked In',
-    clockInTime: new Date(new Date().setHours(new Date().getHours() - 1)),
+    currentSessionStart: new Date(new Date().setHours(new Date().getHours() - 1)),
+    accumulatedTimeToday: 4 * 3600 * 1000, // 4 hours from previous sessions today
     tasks: [{ id: 't4', description: 'Debugging production issue.', timestamp: new Date() }],
     totalHours: 5.8,
   },
@@ -46,6 +49,7 @@ export const mockEmployees: Employee[] = [
     email: 'ethan@example.com',
     role: 'employee',
     status: 'Clocked Out',
+    accumulatedTimeToday: 8.1 * 3600 * 1000,
     tasks: [{ id: 't5', description: 'Completed quarterly report.', timestamp: new Date() }],
     totalHours: 8.1,
   },

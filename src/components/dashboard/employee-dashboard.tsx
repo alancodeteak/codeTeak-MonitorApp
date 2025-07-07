@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -12,45 +12,58 @@ import {
 } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Clock, LogIn, LogOut } from "lucide-react";
-import type { EmployeeStatus } from "@/lib/types";
+import type { Employee } from "@/lib/types";
+import { mockEmployees } from "@/lib/data";
+import { HoursToday } from "./hours-today";
+
+// In a real app, this would come from an auth context or API call
+const currentEmployeeId = '1';
+
+// In a real app, you would have an API to update the employee data.
+// Here we are mocking this behavior by mutating the imported array.
+const updateMockEmployee = (updatedEmployee: Employee) => {
+    const index = mockEmployees.findIndex(e => e.id === updatedEmployee.id);
+    if (index !== -1) {
+        mockEmployees[index] = updatedEmployee;
+    }
+}
 
 export function EmployeeDashboard() {
-  const [status, setStatus] = useState<EmployeeStatus>("Clocked Out");
-  const [startTime, setStartTime] = useState<Date | null>(null);
-  const [elapsedTime, setElapsedTime] = useState(0);
-
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (status === "Clocked In" && startTime) {
-      timer = setInterval(() => {
-        setElapsedTime(new Date().getTime() - startTime.getTime());
-      }, 1000);
+  const [employee, setEmployee] = useState<Employee>(() => {
+    const emp = mockEmployees.find(e => e.id === currentEmployeeId);
+    if (!emp) {
+      // This should not happen in a real app with proper auth
+      throw new Error("Employee not found");
     }
-    return () => {
-      clearInterval(timer);
-    };
-  }, [status, startTime]);
+    return emp;
+  });
 
   const handleClockIn = () => {
-    setStatus("Clocked In");
-    setStartTime(new Date());
-    setElapsedTime(0);
+    const updatedEmployee = {
+        ...employee,
+        status: "Clocked In" as const,
+        currentSessionStart: new Date(),
+    };
+    setEmployee(updatedEmployee);
+    updateMockEmployee(updatedEmployee);
   };
 
   const handleClockOut = () => {
-    setStatus("Clocked Out");
-    setStartTime(null);
+    const sessionDuration = employee.currentSessionStart 
+      ? new Date().getTime() - new Date(employee.currentSessionStart).getTime()
+      : 0;
+    
+    const updatedEmployee = {
+        ...employee,
+        status: "Clocked Out" as const,
+        currentSessionStart: undefined,
+        accumulatedTimeToday: employee.accumulatedTimeToday + sessionDuration,
+    };
+    setEmployee(updatedEmployee);
+    updateMockEmployee(updatedEmployee);
   };
 
-  const formatTime = (ms: number) => {
-    const totalSeconds = Math.floor(ms / 1000);
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-  };
-
-  const isClockedIn = status === "Clocked In";
+  const isClockedIn = employee.status === "Clocked In";
 
   return (
     <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
@@ -65,14 +78,21 @@ export function EmployeeDashboard() {
             <div className="flex-1 space-y-1">
               <p className="text-sm font-medium leading-none">Status</p>
               <p className={`text-sm font-semibold ${isClockedIn ? 'text-emerald-500' : 'text-muted-foreground'}`}>
-                {status}
+                {employee.status}
               </p>
             </div>
           </div>
           <div className="flex items-center space-x-4 rounded-md border p-4">
              <div className="flex-1 space-y-1">
                 <p className="text-sm font-medium leading-none">Hours Worked Today</p>
-                <p className="text-3xl font-bold font-mono">{formatTime(elapsedTime)}</p>
+                <p className="text-3xl font-bold font-mono">
+                    <HoursToday
+                      status={employee.status}
+                      accumulatedTime={employee.accumulatedTimeToday}
+                      sessionStart={employee.currentSessionStart}
+                      showSeconds={true}
+                    />
+                </p>
             </div>
           </div>
         </CardContent>
