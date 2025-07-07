@@ -2,10 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family: Arial, Helvetica, sans-serif;
-}
-
 @layer base {
   :root {
     --background: 240 67% 94%;
@@ -20,15 +16,15 @@ body {
     --secondary-foreground: 275 100% 25%;
     --muted: 275 40% 95%;
     --muted-foreground: 275 15% 45%;
-    --accent: 276 100% 65%;
+    --accent: 276 100% 50%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
     --border: 275 20% 85%;
     --input: 275 20% 90%;
-    --ring: 276 100% 65%;
+    --ring: 276 100% 50%;
     --chart-1: 275 100% 25%;
-    --chart-2: 276 100% 65%;
+    --chart-2: 276 100% 50%;
     --chart-3: 275 40% 60%;
     --chart-4: 240 50% 70%;
     --chart-5: 275 20% 85%;
@@ -40,7 +36,7 @@ body {
     --sidebar-accent: 275 40% 90%;
     --sidebar-accent-foreground: 275 100% 25%;
     --sidebar-border: 275 20% 85%;
-    --sidebar-ring: 276 100% 65%;
+    --sidebar-ring: 276 100% 50%;
   }
   .dark {
     --background: 275 10% 10%;
@@ -55,7 +51,7 @@ body {
     --secondary-foreground: 240 5% 95%;
     --muted: 275 15% 25%;
     --muted-foreground: 240 5% 65%;
-    --accent: 276 100% 65%;
+    --accent: 276 100% 60%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
@@ -63,7 +59,7 @@ body {
     --input: 275 15% 22%;
     --ring: 276 100% 75%;
     --chart-1: 275 100% 75%;
-    --chart-2: 276 100% 65%;
+    --chart-2: 276 100% 60%;
     --chart-3: 275 40% 60%;
     --chart-4: 240 50% 70%;
     --chart-5: 275 20% 85%;

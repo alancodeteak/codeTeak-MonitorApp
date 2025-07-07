@@ -40,9 +40,9 @@ const statusVariant: { [key in EmployeeStatus]: "default" | "secondary" | "destr
 };
 
 const statusColor: { [key in EmployeeStatus]: string } = {
-  "Clocked In": "bg-green-500",
-  "On Break": "bg-yellow-500",
-  "Clocked Out": "bg-gray-500",
+  "Clocked In": "bg-emerald-500",
+  "On Break": "bg-amber-500",
+  "Clocked Out": "bg-slate-500",
 };
 
 
@@ -55,7 +55,7 @@ export function EmployerDashboard({ employees }: EmployerDashboardProps) {
     const updateTimes = () => {
       const newTimes: Record<string, { hoursToday: string; clockedInAt: string }> = {};
       const date = new Date();
-      setCurrentDate(date.toLocaleDateString());
+      setCurrentDate(date.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }));
 
       employees.forEach((employee) => {
         const clockedInAt = employee.clockInTime
@@ -90,7 +90,7 @@ export function EmployerDashboard({ employees }: EmployerDashboardProps) {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Dialog>
+        <Dialog open={!!selectedEmployee} onOpenChange={(open) => !open && setSelectedEmployee(null)}>
           <div className="rounded-md border">
             <Table>
               <TableHeader>
@@ -155,7 +155,7 @@ export function EmployerDashboard({ employees }: EmployerDashboardProps) {
                 )}
               </div>
               <DialogFooter>
-                 <Button variant="outline" onClick={() => setSelectedEmployee(null)}>Close</Button>
+                 <Button variant="secondary" onClick={() => setSelectedEmployee(null)}>Close</Button>
               </DialogFooter>
             </DialogContent>
           )}
