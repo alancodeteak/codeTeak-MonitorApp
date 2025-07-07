@@ -225,12 +225,12 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f40$firebase$2
 // Your web app's Firebase configuration
 // This is now being pulled from environment variables
 const firebaseConfig = {
-    apiKey: ("TURBOPACK compile-time value", "AIzaSy..."),
+    apiKey: ("TURBOPACK compile-time value", "AIzaSyBdYODQsdqc-DgmVU29A929UoidDJgveVo"),
     authDomain: ("TURBOPACK compile-time value", "codeteak-monitorring.firebaseapp.com"),
     projectId: ("TURBOPACK compile-time value", "codeteak-monitorring"),
     storageBucket: ("TURBOPACK compile-time value", "codeteak-monitorring.firebasestorage.app"),
     messagingSenderId: ("TURBOPACK compile-time value", "518155558674"),
-    appId: ("TURBOPACK compile-time value", "1:518155558674:web:e5ee2da3e48a2bd3081dcb\\")
+    appId: ("TURBOPACK compile-time value", "1:518155558674:web:e5ee2da3e48a2bd3081dcb")
 };
 // Initialize Firebase
 // We check if an app is already initialized to prevent errors during hot-reloads

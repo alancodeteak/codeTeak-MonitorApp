@@ -525,6 +525,10 @@ body {
   margin-bottom: .25rem;
 }
 
+.mb-6 {
+  margin-bottom: 1.5rem;
+}
+
 .ml-auto {
   margin-left: auto;
 }
@@ -832,10 +836,6 @@ body {
   max-width: 32rem;
 }
 
-.max-w-md {
-  max-width: 28rem;
-}
-
 .flex-1 {
   flex: 1;
 }
@@ -950,10 +950,6 @@ body {
 
 .auto-rows-min {
   grid-auto-rows: min-content;
-}
-
-.grid-cols-2 {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .flex-col {

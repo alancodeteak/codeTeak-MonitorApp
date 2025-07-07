@@ -96,6 +96,35 @@ export function EmployerDashboard() {
     defaultValues: { name: "" },
   });
 
+  const createEmployeeSchema = z.object({
+    name: z.string().min(2, 'Name is required'),
+    email: z.string().email('Invalid email address'),
+    password: z.string().min(8, 'Password must be at least 8 characters'),
+  });
+  const createEmployeeForm = useForm<z.infer<typeof createEmployeeSchema>>({
+    resolver: zodResolver(createEmployeeSchema),
+    defaultValues: { name: '', email: '', password: '' },
+  });
+  const [creatingEmployee, setCreatingEmployee] = React.useState(false);
+  const onCreateEmployee = async (values: z.infer<typeof createEmployeeSchema>) => {
+    setCreatingEmployee(true);
+    try {
+      const res = await fetch('/api/create-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(values),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to create user');
+      toast({ title: 'Employee Created', description: 'The employee account was created successfully.' });
+      createEmployeeForm.reset();
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Error', description: error.message });
+    } finally {
+      setCreatingEmployee(false);
+    }
+  };
+
   React.useEffect(() => {
     if (dialogState.type === 'edit' && dialogState.employee) {
       editEmployeeForm.reset({ name: dialogState.employee.name });
@@ -208,6 +237,62 @@ export function EmployerDashboard() {
 
   return (
     <div className="space-y-6">
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Create Employee</CardTitle>
+          <CardDescription>
+            Add a new employee by specifying their name, email, and password. Share these credentials with the employee.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...createEmployeeForm}>
+            <form onSubmit={createEmployeeForm.handleSubmit(onCreateEmployee)} className="space-y-4">
+              <FormField
+                control={createEmployeeForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="John Doe" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={createEmployeeForm.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input placeholder="user@example.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={createEmployeeForm.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                      <Input type="password" placeholder="••••••••" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Button type="submit" className="w-full" disabled={creatingEmployee}>
+                {creatingEmployee ? 'Creating...' : 'Create Employee'}
+              </Button>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
       <Card>
         <CardHeader>
           <CardTitle>Team Status</CardTitle>
@@ -251,7 +336,7 @@ export function EmployerDashboard() {
                         <HoursToday 
                           status={employee.status}
                           accumulatedTime={employee.accumulatedTimeToday}
-                          sessionStart={employee.currentSessionStart}
+                          sessionStart={employee.currentSessionStart ?? undefined}
                         />
                       </TableCell>
                       <TableCell className="text-right">
