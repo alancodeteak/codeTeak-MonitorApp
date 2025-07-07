@@ -11,15 +11,16 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { Clock, LogIn, LogOut, MapPin, Loader2 } from "lucide-react";
-import type { Employee } from "@/lib/types";
+import { Clock, LogIn, LogOut, Loader2, ClipboardCheck } from "lucide-react";
+import type { Employee, Task } from "@/lib/types";
 import { HoursToday } from "./hours-today";
 import { useToast } from "@/hooks/use-toast";
 import { getDistance } from "@/lib/utils";
 import { auth, db } from "@/lib/firebase";
-import { doc, onSnapshot, updateDoc, arrayUnion, serverTimestamp, increment } from "firebase/firestore";
+import { doc, onSnapshot, updateDoc, arrayUnion, increment } from "firebase/firestore";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { Skeleton } from "../ui/skeleton";
+import { Badge } from "../ui/badge";
 
 const OFFICE_COORDS = { latitude: 12.874256, longitude: 77.613996 };
 const MAX_DISTANCE_METERS = 30;
@@ -53,7 +54,11 @@ export function EmployeeDashboard() {
           ...data,
           id: docSnap.id,
           currentSessionStart: data.currentSessionStart?.toDate(),
-          tasks: data.tasks.map((task: any) => ({
+          loggedTasks: (data.loggedTasks || []).map((task: any) => ({
+            ...task,
+            timestamp: task.timestamp.toDate(),
+          })),
+          assignedTasks: (data.assignedTasks || []).map((task: any) => ({
             ...task,
             timestamp: task.timestamp.toDate(),
           })),
@@ -131,10 +136,14 @@ export function EmployeeDashboard() {
   const handleSaveLog = async () => {
     if (!user || !taskLog.trim()) return;
     try {
+      const newTask: Omit<Task, 'timestamp'> = {
+        id: `task_${Date.now()}`,
+        description: taskLog,
+        status: 'completed', // Logged tasks are implicitly completed
+      }
       await updateDoc(doc(db, "users", user.uid), {
-        tasks: arrayUnion({
-          id: `task_${Date.now()}`,
-          description: taskLog,
+        loggedTasks: arrayUnion({
+          ...newTask,
           timestamp: new Date(),
         })
       });
@@ -152,6 +161,28 @@ export function EmployeeDashboard() {
     }
   };
 
+  const handleCompleteTask = async (taskId: string) => {
+    if (!user || !employee) return;
+    try {
+      const updatedTasks = employee.assignedTasks.map(task =>
+        task.id === taskId ? { ...task, status: 'completed' } : task
+      );
+      await updateDoc(doc(db, "users", user.uid), {
+        assignedTasks: updatedTasks,
+      });
+      toast({
+        title: "Task Completed",
+        description: "Great job!",
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error Updating Task",
+        description: error.message,
+      });
+    }
+  };
+
   useEffect(() => {
     window.addEventListener("beforeunload", handleClockOut);
     return () => window.removeEventListener("beforeunload", handleClockOut);
@@ -159,7 +190,7 @@ export function EmployeeDashboard() {
   
   if (loading) {
     return (
-       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+       <div className="grid auto-rows-min gap-6 md:grid-cols-3">
          <Card className="md:col-span-1">
             <CardHeader><Skeleton className="h-8 w-3/4" /></CardHeader>
             <CardContent className="space-y-4"><Skeleton className="h-24 w-full" /></CardContent>
@@ -170,6 +201,10 @@ export function EmployeeDashboard() {
             <CardContent><Skeleton className="h-48 w-full" /></CardContent>
             <CardFooter><Skeleton className="h-10 w-24" /></CardFooter>
           </Card>
+          <Card className="md:col-span-3">
+            <CardHeader><Skeleton className="h-8 w-3/4" /></CardHeader>
+            <CardContent><Skeleton className="h-32 w-full" /></CardContent>
+          </Card>
        </div>
     );
   }
@@ -179,9 +214,10 @@ export function EmployeeDashboard() {
   }
   
   const isClockedIn = employee.status === "Clocked In";
+  const pendingTasks = employee.assignedTasks.filter(t => t.status === 'pending');
 
   return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+    <div className="grid auto-rows-min gap-6 md:grid-cols-3">
       <Card className="md:col-span-1">
         <CardHeader>
           <CardTitle>Time Clock</CardTitle>
@@ -254,6 +290,47 @@ export function EmployeeDashboard() {
         <CardFooter>
           <Button onClick={handleSaveLog}>Save Log</Button>
         </CardFooter>
+      </Card>
+      
+      <Card className="md:col-span-3">
+        <CardHeader>
+          <CardTitle>Assigned Tasks</CardTitle>
+          <CardDescription>
+            Tasks assigned to you by your employer. Mark them as complete when you're done.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {pendingTasks.length > 0 ? (
+            <ul className="space-y-4">
+              {pendingTasks.map((task) => (
+                <li key={task.id} className="flex items-center justify-between rounded-md border p-4">
+                  <div className="space-y-1">
+                    <p className="font-medium">{task.description}</p>
+                    <p className="text-sm text-muted-foreground">Assigned by: {task.assignedBy}</p>
+                  </div>
+                  <Button size="sm" onClick={() => handleCompleteTask(task.id)}>
+                    <ClipboardCheck className="mr-2" /> Mark as Done
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-muted-foreground">No pending tasks. Great job!</p>
+          )}
+          {employee.assignedTasks.filter(t => t.status === 'completed').length > 0 && (
+             <div className="mt-4">
+                <h4 className="text-sm font-medium text-muted-foreground">Completed Today</h4>
+                <ul className="mt-2 space-y-2">
+                {employee.assignedTasks.filter(t => t.status === 'completed').map(task => (
+                    <li key={task.id} className="flex items-center gap-3 text-muted-foreground">
+                        <ClipboardCheck className="text-emerald-500" />
+                        <span className="line-through">{task.description}</span>
+                    </li>
+                ))}
+                </ul>
+             </div>
+          )}
+        </CardContent>
       </Card>
     </div>
   );

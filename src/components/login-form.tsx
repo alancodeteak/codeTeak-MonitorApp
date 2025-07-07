@@ -124,7 +124,8 @@ export function LoginForm() {
         status: 'Clocked Out',
         accumulatedTimeToday: 0,
         currentSessionStart: null,
-        tasks: [],
+        loggedTasks: [],
+        assignedTasks: [],
         totalHours: 0
       };
 

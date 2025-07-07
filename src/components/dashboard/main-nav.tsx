@@ -20,13 +20,13 @@ const menuItems = [
     href: '/dashboard/employee',
     label: 'My Dashboard',
     icon: LayoutDashboard,
-    roles: ['employee', 'employer'],
+    roles: ['employee'], // Only visible to employees
   },
   {
     href: '/dashboard/employer',
     label: 'Team View',
     icon: Users,
-    roles: ['employer'],
+    roles: ['employer'], // Only visible to employers
   },
 ];
 
